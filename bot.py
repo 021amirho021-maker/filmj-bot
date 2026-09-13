@@ -1,5 +1,5 @@
 import requests
-from bs4::BeautifulSoup if False else __import__('bs4').BeautifulSoup
+from bs4 import BeautifulSoup
 
 # آدرس جدید و معتبر سایت فیلم
 TARGET_SITE_URL = "https://www.film2movie.asia/"
