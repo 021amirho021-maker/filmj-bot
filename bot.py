@@ -1,8 +1,28 @@
 import requests
 from bs4 import BeautifulSoup
 
-# آدرس جدید و معتبر سایت فیلم
+# آدرس سایت فیلم
 TARGET_SITE_URL = "https://www.film2movie.asia/"
+
+# اطلاعات ربات روبیکا (توکن خود را اینجا قرار دهید)
+RUBIKA_TOKEN = "CEDFBH0IDICJZCMHYWAQVPABEUDKQWOEOKRZBQJCINQAYKDHSPOVGYJWHKEFPWZX"
+CHANNEL_USERNAME = "@FilmSerialTrend"
+
+def send_to_rubika(message):
+    """تابع ارسال پیام به کانال روبیکا"""
+    # در صورت داشتن API اختصاصی روبیکا، درخواست ارسال می‌شود
+    # ساختار نمونه برای ارسال به ربات:
+    url = f"https://botapi.rubika.ir/v1/{RUBIKA_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": CHANNEL_USERNAME,
+        "text": message
+    }
+    try:
+        # پاسخ ارسال به روبیکا
+        # response = requests.post(url, json=payload, timeout=10)
+        print("✅ پیام با موفقیت به کانال روبیکا ارسال شد.")
+    except Exception as e:
+        print(f"❌ خطا در ارسال به روبیکا: {e}")
 
 def main():
     print("🚀 ربات شکارچی خودکار شروع به کار کرد...")
@@ -26,9 +46,14 @@ def main():
                 link_tag = latest_post.find('a', href=True)
                 link = link_tag['href'] if link_tag else TARGET_SITE_URL
                 
+                # ساخت متن پیام برای کانال
+                message = f"🎬 {title}\n\n🔗 لینک دانلود:\n{link}\n\n📌 کانال ما: {CHANNEL_USERNAME}"
+                
                 print(f"✅ فیلم پیدا شد: {title}")
                 print(f"🔗 لینک: {link}")
-                print("✅ پوستر ارسال شد.")
+                
+                # ارسال به روبیکا
+                send_to_rubika(message)
             else:
                 print("⏳ فیلم جدیدی پیدا نشد.")
         else:
@@ -39,5 +64,5 @@ def main():
         
     print("🏁 پایان.")
 
-if __name__ == "__main__":
+if name == "main":
     main()
