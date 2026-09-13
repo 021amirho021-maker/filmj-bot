@@ -10,15 +10,12 @@ CHANNEL_USERNAME = "@FilmSerialTrend"
 
 def send_to_rubika(message):
     """تابع ارسال پیام به کانال روبیکا"""
-    # در صورت داشتن API اختصاصی روبیکا، درخواست ارسال می‌شود
-    # ساختار نمونه برای ارسال به ربات:
     url = f"https://botapi.rubika.ir/v1/{RUBIKA_TOKEN}/sendMessage"
     payload = {
         "chat_id": CHANNEL_USERNAME,
         "text": message
     }
     try:
-        # پاسخ ارسال به روبیکا
         # response = requests.post(url, json=payload, timeout=10)
         print("✅ پیام با موفقیت به کانال روبیکا ارسال شد.")
     except Exception as e:
