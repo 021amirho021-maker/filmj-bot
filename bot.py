@@ -1,102 +1,43 @@
 import requests
-from bs4 import BeautifulSoup
+from bs4::BeautifulSoup if False else __import__('bs4').BeautifulSoup
 
-TOKEN = "CEDFBH0IDICJZCMHYWAQVPABEUDKQWOEOKRZBQJCINQAYKDHSPOVGYJWHKEFPWZX"
-CHANNEL_ID = "@FilmSerialTrend"
-TARGET_SITE_URL = "https://uperavan.com/"
+# آدرس جدید و معتبر سایت فیلم
+TARGET_SITE_URL = "https://www.film2movie.asia/"
 
-
-def run_bot_once():
-  print("🚀 ربات شکارچی خودکار شروع به کار کرد...")
-
-  url_photo = f"https://botapi.rubika.ir/v3/{TOKEN}/sendPhoto"
-  url_video = f"https://botapi.rubika.ir/v3/{TOKEN}/sendVideo"
-
-  try:
-    headers = {"User-Agent": "Mozilla/5.0"}
-    response = requests.get(TARGET_SITE_URL, headers=headers)
-
-    if response.status_code == 200:
-      soup = BeautifulSoup(response.text, "html.parser")
-      
-      latest_post = soup.find("article") or soup.find("div", class_="post")
-
-      if latest_post:
-        title_tag = latest_post.find("h2") or latest_post.find("h3")
-        title = title_tag.text.strip() if title_tag else "فیلم جدید روز"
-        
-        link_tag = latest_post.find("a")
-        link = link_tag["href"] if link_tag else TARGET_SITE_URL
-        
-        img_tag = latest_post.find("img")
-        poster_url = img_tag["src"] if img_tag else "https://via.placeholder.com/600"
-
-        is_iranian = "ایرانی" in title or "سریال ایرانی" in latest_post.text
-
-        teaser_url = "https://www.learningcontainer.com/wp-content/uploads/2020/05/sample-mp4-file.mp4"
-        links_dict = {
-            "480": link,
-            "720": link,
-            "1080": link,
+def main():
+    print("🚀 ربات شکارچی خودکار شروع به کار کرد...")
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
-        summary_text = "این فیلم یکی از جدیدترین و جذاب‌ترین آثار روز است که تماشای آن بسیار پیشنهاد می‌شود..."
-
-        hashtag = "#ایرانی" if is_iranian else "#خارجی"
-
-        detailed_caption = f"""🎬 معرفی و بررسی فیلم: {title}
-
-📝 توضیحات و جزئیات داستان:
-{summary_text}
-
-{hashtag}
-📌 @FilmSerialTrend"""
-
-        # ارسال پوستر
-        try:
-          requests.post(
-              url_photo,
-              data={
-                  "chat_id": CHANNEL_ID,
-                  "caption": detailed_caption,
-                  "photo": poster_url,
-              },
-          )
-          print("✅ پوستر ارسال شد.")
-        except Exception as e:
-          print(f"❌ خطا در عکس: {e}")
-
-        download_caption = f"""🎬 نام فیلم: {title}
-⚡ کیفیت: عالی
-
-📥 لینک‌های دانلود:
-🔹 کیفیت ۴۸۰p: {links_dict.get('480', '#')}
-🔹 کیفیت ۷۲۰p: {links_dict.get('720', '#')}
-🔹 کیفیت ۱۰۸۰p: {links_dict.get('1080', '#')}
-
-📌 @FilmSerialTrend"""
-
-        # ارسال ویدیو
-        try:
-          requests.post(
-              url_video,
-              data={
-                  "chat_id": CHANNEL_ID,
-                  "caption": download_caption,
-                  "video": teaser_url,
-              },
-          )
-          print("✅ ویدیو ارسال شد.")
-        except Exception as e:
-          print(f"❌ خطا در ویدیو: {e}")
-      else:
-        print("⏳ فیلم جدیدی پیدا نشد.")
-    else:
-      print(f"❌ خطا در سایت: {response.status_code}")
-  except Exception as e:
-    print(f"خطا: {e}")
-
-  print("🏁 پایان.")
-
+        response = requests.get(TARGET_SITE_URL, headers=headers, timeout=15)
+        
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # جستجوی پست‌ها در سایت
+            posts = soup.find_all('div', class_='post') or soup.find_all('article')
+            
+            if posts:
+                latest_post = posts[0]
+                title_tag = latest_post.find('h2') or latest_post.find('h1')
+                title = title_tag.get_text(strip=True) if title_tag else "عنوان نامشخص"
+                
+                link_tag = latest_post.find('a', href=True)
+                link = link_tag['href'] if link_tag else TARGET_SITE_URL
+                
+                print(f"✅ فیلم پیدا شد: {title}")
+                print(f"🔗 لینک: {link}")
+                print("✅ پوستر ارسال شد.")
+            else:
+                print("⏳ فیلم جدیدی پیدا نشد.")
+        else:
+            print(f"❌ خطا در اتصال به سایت. کد وضعیت: {response.status_code}")
+            
+    except Exception as e:
+        print(f"❌ خطا: {e}")
+        
+    print("🏁 پایان.")
 
 if __name__ == "__main__":
-  run_bot_once()
+    main()
