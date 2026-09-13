@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 # آدرس سایت فیلم
 TARGET_SITE_URL = "https://www.film2movie.asia/"
 
-# اطلاعات ربات روبیکا (توکن خود را اینجا قرار دهید)
+# اطلاعات ربات روبیکا (توکن شما قرار داده شد)
 RUBIKA_TOKEN = "CEDFBH0IDICJZCMHYWAQVPABEUDKQWOEOKRZBQJCINQAYKDHSPOVGYJWHKEFPWZX"
 CHANNEL_USERNAME = "@FilmSerialTrend"
 
@@ -16,7 +16,7 @@ def send_to_rubika(message):
         "text": message
     }
     try:
-        # response = requests.post(url, json=payload, timeout=10)
+        response = requests.post(url, json=payload, timeout=10)
         print("✅ پیام با موفقیت به کانال روبیکا ارسال شد.")
     except Exception as e:
         print(f"❌ خطا در ارسال به روبیکا: {e}")
@@ -61,5 +61,5 @@ def main():
         
     print("🏁 پایان.")
 
-if name == "main":
+if __name__ == "__main__":
     main()
