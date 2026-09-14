@@ -52,6 +52,7 @@ def save_to_history(post_url, trailer_url):
 
 def get_teaser_url(post_soup):
     try:
+        # ۱. بررسی تگ استاندارد video
         video_tag = post_soup.find('video')
         if video_tag:
             if video_tag.get('src'):
@@ -60,17 +61,19 @@ def get_teaser_url(post_soup):
             if source_tag and source_tag.get('src'):
                 return source_tag['src']
         
+        # ۲. جستجوی دقیق لینک‌های مستقیم ویدیویی در صفحه
         for a in post_soup.find_all('a', href=True):
             href = a['href']
             lower_href = href.lower()
-            if any(ext in lower_href for ext in ['.mp4', '.mkv', 'trailer', 'teaser', 'dl']):
-                return href
+            # باید شامل پسوند ویدیو یا کلمات کلیدی تریلر باشد و به صفحات معمولی HTML ختم نشود
+            if '.mp4' in lower_href or '.mkv' in lower_href or 'trailer' in lower_href or 'teaser' in lower_href:
+                if not lower_href.endswith(('.html', '.php', '.aspx', '.htm', '/')):
+                    return href
     except Exception:
         pass
     return None
 
-def extract_movie_info(post_soup, raw_html_text):
-    # استخراج خلاصه داستان دقیق از متاتگ‌های سایت
+def extract_movie_info(post_soup):
     meta_desc = post_soup.find('meta', property='og:description') or post_soup.find('meta', attrs={'name': 'description'})
     if meta_desc and meta_desc.get('content'):
         summary = meta_desc['content'].strip()
@@ -80,7 +83,7 @@ def extract_movie_info(post_soup, raw_html_text):
     return "روایتی جذاب و تماشایی که شما را تا انتهای داستان مبهوت خود خواهد کرد..."
 
 async def main():
-    print("🚀 ربات هوشمند با تنظیمات پیشرفته راه‌اندازی شد...")
+    print("🚀 ربات هوشمند با فیلتر دقیق تریلر راه‌اندازی شد...")
     posted_history = get_posted_history()
     
     headers = {
@@ -106,7 +109,7 @@ async def main():
                 if not posts:
                     continue
 
-                for p in posts[:12]:
+                for p in posts[:15]:
                     if posted_successfully:
                         break
 
@@ -140,10 +143,10 @@ async def main():
                     trailer_url = get_teaser_url(post_soup)
                     
                     if not trailer_url or trailer_url in posted_history:
-                        print("⏭️ این فیلم تریلر معتبر نداشت یا تکراری بود.")
+                        print("⏭️ این فیلم لینک تریلر مستقیم نداشت یا تکراری بود.")
                         continue
                     
-                    print(f"📥 در حال دانلود تریلر اصلی: {trailer_url}")
+                    print(f"📥 در حال دانلود تریلر از لینک: {trailer_url}")
                     
                     vid_headers = headers.copy()
                     vid_headers['Referer'] = post_url
@@ -158,17 +161,16 @@ async def main():
                         for chunk in vid_res.iter_content(chunk_size=8192):
                             f.write(chunk)
                     
-                    # بررسی سلامت فایل ویدیویی (نباید کمتر از ۵۰۰ کیلوبایت باشد وگرنه ارور یا صفحه HTML است)
+                    # بررسی سلامت فایل ویدیویی (حجم باید بیشتر از ۵۰۰ کیلوبایت باشد)
                     file_size = os.path.getsize(trailer_file)
                     if file_size < 500 * 1024:
-                        print(f"⚠️ فایل دانلود شده ناقص یا نامعتبر است (حجم: {file_size} بایت). رد کردن...")
+                        print(f"⚠️ فایل دانلود شده ویدیوی معتبری نبود (حجم: {file_size} بایت). رد کردن...")
                         if os.path.exists(trailer_file):
                             os.remove(trailer_file)
                         continue
 
                     page_text = post_soup.get_text()
                     
-                    # تشخیص هوشمند دوبله یا زیرنویس
                     if "دوبله فارسی" in page_text or "صوت دوبله" in page_text:
                         version_tag = "🎙️ #دوبله_فارسی"
                     else:
@@ -177,11 +179,10 @@ async def main():
                     is_comedy = "کمدی" in title or "طنز" in title or "Comedy" in page_text
                     genre = "#کمدی #طنز" if is_comedy else "#اکشن #جنایی #درام"
                     
-                    # استخراج امتیاز IMDb
                     imdb_match = re.search(r'IMDb[:\s]*([0-9.]+)', page_text, re.IGNORECASE)
                     imdb_score = imdb_match.group(1) if imdb_match else "۷.۵"
 
-                    summary_text = extract_movie_info(post_soup, page_text)
+                    summary_text = extract_movie_info(post_soup)
                     
                     caption = (
                         f"🎬 {title}\n"
@@ -196,13 +197,13 @@ async def main():
                     )
                     
                     try:
-                        print("📤 در حال آپلود و ارسال ویدیو سالم به همراه متن در کانال...")
+                        print("📤 در حال آپلود و ارسال ویدیوی سالم به همراه متن در کانال...")
                         await bot.send_file(chat_id=CHAT_ID, file=trailer_file, text=caption)
                         
                         if os.path.exists(trailer_file):
                             os.remove(trailer_file)
                         
-                        print("✅ پست با موفقیت و بدون نقص در کانال منتشر شد!")
+                        print("✅ پست با موفقیت، متن کامل و ویدیوی قابل پخش در کانال منتشر شد!")
                         save_to_history(post_url, trailer_url)
                         posted_successfully = True
                         break
