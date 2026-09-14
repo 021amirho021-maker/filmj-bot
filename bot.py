@@ -16,7 +16,6 @@ except ImportError:
 from curl_cffi import requests as c_requests
 from rubpy import BotClient
 
-# لیست سایت‌های منبع
 TARGET_SITES = [
     "https://www.doostihaa.com/",
     "https://salamdl.info/"
@@ -70,14 +69,18 @@ def get_teaser_url(post_soup):
         pass
     return None
 
-def extract_movie_info(post_soup):
-    text_content = post_soup.get_text()
-    imdb_match = re.search(r'IMDb[:\s]*([0-9.]+)', text_content, re.IGNORECASE)
-    imdb_score = imdb_match.group(1) if imdb_match else "۸.۲"
-    return imdb_score
+def extract_movie_info(post_soup, raw_html_text):
+    # استخراج خلاصه داستان دقیق از متاتگ‌های سایت
+    meta_desc = post_soup.find('meta', property='og:description') or post_soup.find('meta', attrs={'name': 'description'})
+    if meta_desc and meta_desc.get('content'):
+        summary = meta_desc['content'].strip()
+        if len(summary) > 30:
+            return summary[:450] + "..."
+
+    return "روایتی جذاب و تماشایی که شما را تا انتهای داستان مبهوت خود خواهد کرد..."
 
 async def main():
-    print("🚀 ربات هوشمند با موفقیت راه‌اندازی شد...")
+    print("🚀 ربات هوشمند با تنظیمات پیشرفته راه‌اندازی شد...")
     posted_history = get_posted_history()
     
     headers = {
@@ -140,7 +143,7 @@ async def main():
                         print("⏭️ این فیلم تریلر معتبر نداشت یا تکراری بود.")
                         continue
                     
-                    print(f"📥 در حال دانلود تریلر: {trailer_url}")
+                    print(f"📥 در حال دانلود تریلر اصلی: {trailer_url}")
                     
                     vid_headers = headers.copy()
                     vid_headers['Referer'] = post_url
@@ -150,42 +153,56 @@ async def main():
                         print(f"❌ دانلود تریلر ناموفق بود (کد وضعیت: {vid_res.status_code})")
                         continue
                         
-                    trailer_file = "temp_trailer.mp4"
+                    trailer_file = "Movie_Trailer.mp4"
                     with open(trailer_file, 'wb') as f:
                         for chunk in vid_res.iter_content(chunk_size=8192):
                             f.write(chunk)
                     
-                    summary_text = "روایتی جذاب و تماشایی که شما را تا انتهای داستان مبهوت خود خواهد کرد..."
-                    content_div = post_soup.find('div', class_='content') or post_soup.find('div', class_='post-content') or post_soup.find('div', class_='entry-content')
-                    if content_div:
-                        paragraphs = [elem.get_text(strip=True) for elem in content_div.find_all('p') if len(elem.get_text(strip=True)) > 30]
-                        if paragraphs:
-                            summary_text = " ".join(paragraphs[:2])[:400] + "..."
+                    # بررسی سلامت فایل ویدیویی (نباید کمتر از ۵۰۰ کیلوبایت باشد وگرنه ارور یا صفحه HTML است)
+                    file_size = os.path.getsize(trailer_file)
+                    if file_size < 500 * 1024:
+                        print(f"⚠️ فایل دانلود شده ناقص یا نامعتبر است (حجم: {file_size} بایت). رد کردن...")
+                        if os.path.exists(trailer_file):
+                            os.remove(trailer_file)
+                        continue
 
-                    is_comedy = "کمدی" in title or "طنز" in title
-                    genre = "#کمدی #طنز" if is_comedy else "#جنایی #اکشن #درام"
-                    imdb_score = extract_movie_info(post_soup)
+                    page_text = post_soup.get_text()
+                    
+                    # تشخیص هوشمند دوبله یا زیرنویس
+                    if "دوبله فارسی" in page_text or "صوت دوبله" in page_text:
+                        version_tag = "🎙️ #دوبله_فارسی"
+                    else:
+                        version_tag = "📄 #زیرنویس_چسبیده_فارسی"
+
+                    is_comedy = "کمدی" in title or "طنز" in title or "Comedy" in page_text
+                    genre = "#کمدی #طنز" if is_comedy else "#اکشن #جنایی #درام"
+                    
+                    # استخراج امتیاز IMDb
+                    imdb_match = re.search(r'IMDb[:\s]*([0-9.]+)', page_text, re.IGNORECASE)
+                    imdb_score = imdb_match.group(1) if imdb_match else "۷.۵"
+
+                    summary_text = extract_movie_info(post_soup, page_text)
                     
                     caption = (
                         f"🎬 {title}\n"
                         f"⚡️ IMDb: {imdb_score}\n\n"
-                        f"🎙️ #دوبله_اختصاصی\n"
+                        f"{version_tag}\n"
                         f"🎭 ژانر: {genre}\n\n"
                         f"📚 خلاصه داستان:\n"
                         f"{summary_text}\n\n"
-                        f"🔗 لینک تماشا:\n"
+                        f"🔗 لینک دانلود و تماشا:\n"
                         f"{post_url}\n\n"
                         f"@moarefi_film_ir"
                     )
                     
                     try:
-                        print("📤 در حال آپلود و ارسال ویدیو به همراه متن در کانال...")
+                        print("📤 در حال آپلود و ارسال ویدیو سالم به همراه متن در کانال...")
                         await bot.send_file(chat_id=CHAT_ID, file=trailer_file, text=caption)
                         
                         if os.path.exists(trailer_file):
                             os.remove(trailer_file)
                         
-                        print("✅ پست با موفقیت در کانال منتشر شد!")
+                        print("✅ پست با موفقیت و بدون نقص در کانال منتشر شد!")
                         save_to_history(post_url, trailer_url)
                         posted_successfully = True
                         break
