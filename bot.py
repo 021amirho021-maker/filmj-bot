@@ -4,12 +4,12 @@ from bs4 import BeautifulSoup
 # آدرس سایت فیلم
 TARGET_SITE_URL = "https://www.film2movie.asia/"
 
-# اطلاعات ربات روبیکا (توکن شما قرار داده شد)
-RUBIKA_TOKEN = "CEDFBH0IDICJZCMHYWAQVPABEUDKQWOEOKRZBQJCINQAYKDHSPOVGYJWHKEFPWZX"
+# اطلاعات ربات روبیکا (توکن جدید شما قرار داده شد)
+RUBIKA_TOKEN = "CEEDJE0NSCPVLWRZSPQCCGYNLTWTKOKYHYVAIBGSKSVRJGHTXVPXXHXOZQLWXRTT"
 CHANNEL_USERNAME = "@FilmSerialTrend"
 
 def send_to_rubika(message):
-    """تابع ارسال پیام به کانال روبیکا"""
+    """تابع ارسال پیام به کانال روبیکا با بررسی پاسخ سرور"""
     url = f"https://botapi.rubika.ir/v1/{RUBIKA_TOKEN}/sendMessage"
     payload = {
         "chat_id": CHANNEL_USERNAME,
@@ -17,9 +17,15 @@ def send_to_rubika(message):
     }
     try:
         response = requests.post(url, json=payload, timeout=10)
-        print("✅ پیام با موفقیت به کانال روبیکا ارسال شد.")
+        print(f"📡 کد وضعیت پاسخ روبیکا: {response.status_code}")
+        print(f"💬 متن پاسخ سرور روبیکا: {response.text}")
+        
+        if response.status_code == 200:
+            print("✅ پیام با موفقیت به کانال روبیکا ارسال شد.")
+        else:
+            print("❌ روبیکا درخواست را قبول نکرد (خطا در پارامترها یا دسترسی).")
     except Exception as e:
-        print(f"❌ خطا در ارسال به روبیکا: {e}")
+        print(f"❌ خطا در اتصال به روبیکا: {e}")
 
 def main():
     print("🚀 ربات شکارچی خودکار شروع به کار کرد...")
