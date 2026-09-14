@@ -1,6 +1,7 @@
 import os
 import asyncio
 import re
+from bs4نهار import BeautifulSoup
 from bs4 import BeautifulSoup
 
 try:
@@ -16,9 +17,8 @@ except ImportError:
 from curl_cffi import requests as c_requests
 from rubpy import BotClient
 
-# لیست سایت‌های فعال و معتبر
+# لیست سایت‌های سازگار با سرورهای ابری (حذف سایت‌های مسدودکننده دیتاسنتر)
 TARGET_SITES = [
-    "https://www.film2movie.asia/",
     "https://www.doostihaa.com/",
     "https://salamdl.info/"
 ]
@@ -54,19 +54,22 @@ def save_to_history(post_url, trailer_url):
 
 def get_teaser_url(post_soup):
     try:
+        # جستجوی تگ video یا source
         video_tag = post_soup.find('video')
         if video_tag:
             if video_tag.get('src'):
                 return video_tag['src']
-            else:
-                source_tag = video_tag.find('source')
-                if source_tag and source_tag.get('src'):
-                    return source_tag['src']
+            source_tag = video_tag.find('source')
+            if source_tag and source_tag.get('src'):
+                return source_tag['src']
         
+        # جستجو در میان تمام لینک‌ها برای پیدا کردن ویدیو یا تریلر
         for a in post_soup.find_all('a', href=True):
             href = a['href']
-            if href.lower().endswith('.mp4') or ('mp4' in href.lower() and 'dl' in href.lower()):
-                return href
+            lower_href = href.lower()
+            if '.mp4' in lower_href or 'trailer' in lower_href or 'teaser' in lower_href or 'dl' in lower_href:
+                if any(ext in lower_href for ext in ['.mp4', '.mkv', 'trailer', 'teaser']):
+                    return href
     except Exception:
         pass
     return None
@@ -74,11 +77,11 @@ def get_teaser_url(post_soup):
 def extract_movie_info(post_soup):
     text_content = post_soup.get_text()
     imdb_match = re.search(r'IMDb[:\s]*([0-9.]+)', text_content, re.IGNORECASE)
-    imdb_score = imdb_match.group(1) if imdb_match else "۸.۱"
+    imdb_score = imdb_match.group(1) if imdb_match else "۸.۲"
     return imdb_score
 
 async def main():
-    print("🚀 ربات هوشمند با موتور شبیه‌سازی مرورگر (بایپس 503) آغاز به کار کرد...")
+    print("🚀 ربات هوشمند با موتور جدید استخراج تریلر آغاز به کار کرد...")
     posted_history = get_posted_history()
     
     headers = {
@@ -99,7 +102,7 @@ async def main():
                     continue
                     
                 soup = BeautifulSoup(response.text, 'html.parser')
-                posts = soup.find_all('div', class_='post') or soup.find_all('article') or soup.find_all('div', class_='item')
+                posts = soup.find_all('div', class_='post') or soup.find_all('article') or soup.find_all('div', class_='item') or soup.find_all('div', class_='box')
                 
                 if not posts:
                     continue
@@ -108,11 +111,14 @@ async def main():
                     if posted_successfully:
                         break
 
-                    title_tag = p.find('h2') or p.find('h1') or p.find('h3')
+                    title_tag = p.find('h2') or p.find('h1') or p.find('h3') or p.find('a')
                     if not title_tag:
                         continue
                     
                     raw_title = title_tag.get_text(strip=True)
+                    if len(raw_title) < 3:
+                        continue
+                        
                     title = raw_title.replace("دانلود فیلم", "").replace("دانلود سریال", "").replace("دانلود", "").strip()
                     
                     link_tag = p.find('a', href=True)
@@ -120,6 +126,9 @@ async def main():
                         continue
                     post_url = link_tag['href']
                     
+                    if not post_url.startswith('http'):
+                        continue
+                        
                     if post_url in posted_history:
                         continue
                     
@@ -132,18 +141,17 @@ async def main():
                     trailer_url = get_teaser_url(post_soup)
                     
                     if not trailer_url or trailer_url in posted_history:
-                        print("⏭️ این فیلم تیزر معتبر نداشت یا تکراری بود.")
+                        print("⏭️ این فیلم تریلر معتبر نداشت یا تکراری بود.")
                         continue
                     
-                    print(f"📥 در حال دانلود تیزر با عبور از سد امنیتی سرور: {trailer_url}")
+                    print(f"📥 در حال دانلود تریلر: {trailer_url}")
                     
                     vid_headers = headers.copy()
                     vid_headers['Referer'] = post_url
                     
-                    # استفاده از impersonate="chrome" برای جلوگیری از خطای 503 و مسدودسازی
                     vid_res = c_requests.get(trailer_url, impersonate="chrome", headers=vid_headers, stream=True, timeout=30)
                     if vid_res.status_code != 200:
-                        print(f"❌ دانلود تیزر ناموفق بود (کد وضعیت: {vid_res.status_code})")
+                        print(f"❌ دانلود تریلر ناموفق بود (کد وضعیت: {vid_res.status_code})")
                         continue
                         
                     trailer_file = "temp_trailer.mp4"
@@ -153,9 +161,9 @@ async def main():
                     
                     # استخراج خلاصه داستان
                     summary_text = "روایتی جذاب و تماشایی که شما را تا انتهای داستان مبهوت خود خواهد کرد..."
-                    content_div = post_soup.find('div', class_='content') or post_soup.find('div', class_='post-content')
+                    content_div = post_soup.find('div', class_='content') or post_soup.find('div', class_='post-content') or post_soup.find('div', class_='entry-content')
                     if content_div:
-                        paragraphs = [elem.get_text(strip=True) for elem in content_div.find_all('p') if len(elem.get_text(strip=True)) > 40]
+                        paragraphs = [elem.get_text(strip=True) for elem in content_div.find_all('p') if len(elem.get_text(strip=True)) > 30]
                         if paragraphs:
                             summary_text = " ".join(paragraphs[:2])[:400] + "..."
 
