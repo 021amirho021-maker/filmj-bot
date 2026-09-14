@@ -12,13 +12,11 @@ except ImportError:
 
 from rubpy import BotClient
 
-# لیست سایت‌های منبع برای جستجوی فیلم و سریال
+# لیست سایت‌های فعال و معتبر (حذف موارد نامعتبر)
 TARGET_SITES = [
     "https://www.film2movie.asia/",
     "https://www.doostihaa.com/",
-    "https://salamdl.info/",
-    "https://hexdownload.co/",
-    "https://bia2movies.vip/"
+    "https://salamdl.info/"
 ]
 
 RUBIKA_TOKEN = "CEEDJE0NSCPVLWRZSPQCCGYNLTWTKOKYHYVAIBGSKSVRJGHTXVPXXHXOZQLWXRTT"
@@ -76,7 +74,7 @@ def extract_movie_info(post_soup):
     return imdb_score
 
 async def main():
-    print("🚀 ربات هوشمند انتشار فیلم با قابلیت آپلود ویدیوی پخش‌مقدماتی آغاز به کار کرد...")
+    print("🚀 ربات هوشمند با سیستم دور زدن محدودیت دانلود آغاز به کار کرد...")
     posted_history = get_posted_history()
     
     headers = {
@@ -133,10 +131,15 @@ async def main():
                         print("⏭️ این فیلم تیزر معتبر نداشت یا تکراری بود.")
                         continue
                     
-                    print(f"📥 در حال دانلود تیزر از: {trailer_url}")
-                    vid_res = requests.get(trailer_url, headers=headers, stream=True, timeout=25)
+                    print(f"📥 در حال دانلود تیزر با مجوز دسترسی (Referer): {trailer_url}")
+                    
+                    # اضافه کردن هدر Referer برای جلوگیری از مسدود شدن دانلود توسط سرور فیلم
+                    vid_headers = headers.copy()
+                    vid_headers['Referer'] = post_url
+                    
+                    vid_res = requests.get(trailer_url, headers=vid_headers, stream=True, timeout=30)
                     if vid_res.status_code != 200:
-                        print("❌ دانلود تیزر ناموفق بود.")
+                        print(f"❌ دانلود تیزر ناموفق بود (کد وضعیت: {vid_res.status_code})")
                         continue
                         
                     trailer_file = "temp_trailer.mp4"
@@ -157,7 +160,6 @@ async def main():
                     genre = "#کمدی #طنز" if is_comedy else "#جنایی #اکشن #درام"
                     imdb_score = extract_movie_info(post_soup)
                     
-                    # ساخت کپشن دقیقاً منطبق بر ساختار عکسی که فرستادید
                     caption = (
                         f"🎬 {title}\n"
                         f"⚡️ IMDb: {imdb_score}\n\n"
@@ -172,13 +174,12 @@ async def main():
                     
                     try:
                         print("📤 در حال آپلود و ارسال ویدیو به همراه کپشن در کانال...")
-                        # ارسال به صورت ویدیو آپلودی (قابل پخش مستقیم) با کپشن متصل در زیر آن
                         await bot.send_video(chat_id=CHAT_ID, video=trailer_file, caption=caption)
                         
                         if os.path.exists(trailer_file):
                             os.remove(trailer_file)
                         
-                        print("✅ پست با موفقیت و دقیقاً با ظاهر استاندارد کانال‌های فیلم منتشر شد!")
+                        print("✅ پست با موفقیت در کانال منتشر شد!")
                         save_to_history(post_url, trailer_url)
                         posted_successfully = True
                         break
