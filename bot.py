@@ -1,5 +1,6 @@
 import os
 import asyncio
+import re
 import requests
 from bs4 import BeautifulSoup
 
@@ -11,10 +12,13 @@ except ImportError:
 
 from rubpy import BotClient
 
+# لیست سایت‌های منبع برای جستجوی فیلم و سریال
 TARGET_SITES = [
     "https://www.film2movie.asia/",
     "https://www.doostihaa.com/",
-    "https://salamdl.info/"
+    "https://salamdl.info/",
+    "https://hexdownload.co/",
+    "https://bia2movies.vip/"
 ]
 
 RUBIKA_TOKEN = "CEEDJE0NSCPVLWRZSPQCCGYNLTWTKOKYHYVAIBGSKSVRJGHTXVPXXHXOZQLWXRTT"
@@ -33,7 +37,7 @@ def save_to_history(post_url, trailer_url):
     if trailer_url:
         posted.add(trailer_url)
     
-    posted_list = list(posted)[-150:]
+    posted_list = list(posted)[-200:]
     with open(HISTORY_FILE, "w", encoding="utf-8") as f:
         f.write("\n".join(posted_list) + "\n")
         
@@ -46,46 +50,33 @@ def save_to_history(post_url, trailer_url):
     except Exception:
         pass
 
-def download_teaser(post_soup, title):
+def get_teaser_url(post_soup):
     try:
-        trailer_url = None
-        
-        # ۱. بررسی تگ استاندارد video و source
         video_tag = post_soup.find('video')
         if video_tag:
             if video_tag.get('src'):
-                trailer_url = video_tag['src']
+                return video_tag['src']
             else:
                 source_tag = video_tag.find('source')
                 if source_tag and source_tag.get('src'):
-                    trailer_url = source_tag['src']
+                    return source_tag['src']
         
-        # ۲. اگر پیدا نشد، جستجوی لینک‌هایی که دقیقاً به فایل ویدیو (.mp4) ختم می‌شوند
-        if not trailer_url:
-            for a in post_soup.find_all('a', href=True):
-                href = a['href']
-                # جلوگیری از انتخاب صفحات دسته‌بندی و فقط لینک مستقیم ویدیویی
-                if href.lower().endswith('.mp4') or ('mp4' in href.lower() and 'dl' in href.lower()):
-                    trailer_url = href
-                    break
-        
-        # اطمینان از اینکه لینک حتماً ویدیویی است
-        if trailer_url and ('mp4' in trailer_url.lower() or trailer_url.lower().endswith('.mp4')):
-            print(f"📥 تیزر ویدیویی معتبر پیدا شد، در حال دانلود از: {trailer_url}")
-            headers = {'User-Agent': 'Mozilla/5.0'}
-            vid_res = requests.get(trailer_url, headers=headers, stream=True, timeout=25)
-            if vid_res.status_code == 200:
-                trailer_path = "temp_trailer.mp4"
-                with open(trailer_path, 'wb') as f:
-                    for chunk in vid_res.iter_content(chunk_size=8192):
-                        f.write(chunk)
-                return trailer_url, trailer_path
-    except Exception as e:
-        print(f"⚠️ خطا در دانلود تیزر: {e}")
-    return None, None
+        for a in post_soup.find_all('a', href=True):
+            href = a['href']
+            if href.lower().endswith('.mp4') or ('mp4' in href.lower() and 'dl' in href.lower()):
+                return href
+    except Exception:
+        pass
+    return None
+
+def extract_movie_info(post_soup):
+    text_content = post_soup.get_text()
+    imdb_match = re.search(r'IMDb[:\s]*([0-9.]+)', text_content, re.IGNORECASE)
+    imdb_score = imdb_match.group(1) if imdb_match else "۸.۱"
+    return imdb_score
 
 async def main():
-    print("🚀 ربات جستجوی خود را برای پیدا کردن فیلم دارای تیزر آغاز کرد...")
+    print("🚀 ربات هوشمند انتشار فیلم با قابلیت آپلود ویدیوی پخش‌مقدماتی آغاز به کار کرد...")
     posted_history = get_posted_history()
     
     headers = {
@@ -100,7 +91,7 @@ async def main():
                 break
                 
             try:
-                print(f"🔍 بررسی سایت: {target_site}")
+                print(f"🔍 در حال بررسی سایت: {target_site}")
                 response = requests.get(target_site, headers=headers, timeout=15)
                 if response.status_code != 200:
                     continue
@@ -111,7 +102,7 @@ async def main():
                 if not posts:
                     continue
 
-                for p in posts[:15]:
+                for p in posts[:12]:
                     if posted_successfully:
                         break
 
@@ -130,56 +121,70 @@ async def main():
                     if post_url in posted_history:
                         continue
                     
-                    print(f"🎯 بررسی فیلم: {title}")
+                    print(f"🎯 فیلم جدید پیدا شد: {title}")
                     post_response = requests.get(post_url, headers=headers, timeout=15)
                     if post_response.status_code != 200:
                         continue
                         
                     post_soup = BeautifulSoup(post_response.text, 'html.parser')
+                    trailer_url = get_teaser_url(post_soup)
                     
-                    trailer_url, trailer_file = download_teaser(post_soup, title)
-                    
-                    if not trailer_url or not trailer_file or trailer_url in posted_history:
-                        print("⏭️ این فیلم تیزر ویدیویی معتبر نداشت یا تکراری بود، رد شد.")
-                        if trailer_file and os.path.exists(trailer_file):
-                            os.remove(trailer_file)
+                    if not trailer_url or trailer_url in posted_history:
+                        print("⏭️ این فیلم تیزر معتبر نداشت یا تکراری بود.")
                         continue
                     
-                    spoiler_desc = "ماجرای این فیلم از جایی شروع می‌شود که کاراکتر اصلی درگیر یک چالش مرگبار و رازآلود شده و در نهایت... (پیشنهاد می‌کنیم حتماً تماشا کنید تا غافلگیر بشید!)"
+                    print(f"📥 در حال دانلود تیزر از: {trailer_url}")
+                    vid_res = requests.get(trailer_url, headers=headers, stream=True, timeout=25)
+                    if vid_res.status_code != 200:
+                        print("❌ دانلود تیزر ناموفق بود.")
+                        continue
+                        
+                    trailer_file = "temp_trailer.mp4"
+                    with open(trailer_file, 'wb') as f:
+                        for chunk in vid_res.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                    
+                    # استخراج خلاصه داستان
+                    summary_text = "روایتی جذاب و تماشایی که شما را تا انتهای داستان مبهوت خود خواهد کرد..."
                     content_div = post_soup.find('div', class_='content') or post_soup.find('div', class_='post-content')
                     if content_div:
-                        paragraphs = [p.get_text(strip=True) for p in content_div.find_all('p') if len(p.get_text(strip=True)) > 40]
+                        paragraphs = [elem.get_text(strip=True) for elem in content_div.find_all('p') if len(elem.get_text(strip=True)) > 40]
                         if paragraphs:
-                            spoiler_desc = " ".join(paragraphs[:2])[:350] + "...\n🔥 (نکته دارک و بخش حساس داستان که نباید لو بره...)"
+                            summary_text = " ".join(paragraphs[:2])[:400] + "..."
 
+                    # تشخیص ژانر و امتیاز
                     is_comedy = "کمدی" in title or "طنز" in title
-                    genre = "کمدی / طنز" if is_comedy else "هیجان‌انگیز / اکشن / درام"
+                    genre = "#کمدی #طنز" if is_comedy else "#جنایی #اکشن #درام"
+                    imdb_score = extract_movie_info(post_soup)
                     
+                    # ساخت کپشن دقیقاً منطبق بر ساختار عکسی که فرستادید
                     caption = (
-                        f"🎬 دانلود فیلم {title}\n\n"
-                        f"✨ امتیاز: ویژه | ژانر: {genre}\n\n"
-                        f"⚠️ **خلاصه داستان (همراه با کمی اسپویل):**\n"
-                        f"{spoiler_desc}\n\n"
-                        f"🔗 **لینک دانلود مستقیم و کامل فیلم:**\n"
+                        f"🎬 {title}\n"
+                        f"⚡️ IMDb: {imdb_score}\n\n"
+                        f"🎙️ #دوبله_اختصاصی\n"
+                        f"🎭 ژانر: {genre}\n\n"
+                        f"📚 خلاصه داستان:\n"
+                        f"{summary_text}\n\n"
+                        f"🔗 لینک تماشا:\n"
                         f"{post_url}\n\n"
-                        f"🔥 تریلر رسمی فیلم را بالا تماشا کنید و نظرتان را کامنت کنید!\n"
-                        f"#فیلم #سریال #معرفی_فیلم #تریلر_فیلم #اسپویل\n\n"
                         f"@moarefi_film_ir"
                     )
                     
                     try:
-                        print("📤 ارسال ویدیو به همراه کپشن متصل در کانال...")
+                        print("📤 در حال آپلود و ارسال ویدیو به همراه کپشن در کانال...")
+                        # ارسال به صورت ویدیو آپلودی (قابل پخش مستقیم) با کپشن متصل در زیر آن
                         await bot.send_video(chat_id=CHAT_ID, video=trailer_file, caption=caption)
                         
-                        os.remove(trailer_file)
+                        if os.path.exists(trailer_file):
+                            os.remove(trailer_file)
                         
-                        print("✅ ویدیو و کپشن یکپارچه با موفقیت در کانال منتشر شد.")
+                        print("✅ پست با موفقیت و دقیقاً با ظاهر استاندارد کانال‌های فیلم منتشر شد!")
                         save_to_history(post_url, trailer_url)
                         posted_successfully = True
                         break
                     except Exception as e:
                         print(f"❌ خطا در ارسال به روبیکا: {e}")
-                        if trailer_file and os.path.exists(trailer_file):
+                        if os.path.exists(trailer_file):
                             os.remove(trailer_file)
                     
             except Exception as e:
