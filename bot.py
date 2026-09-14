@@ -158,17 +158,20 @@ async def main():
                     )
                     
                     try:
-                        print("📤 ارسال تیزر ویدیویی به همراه کپشن به کانال...")
-                        # استفاده از متد استاندارد send_file در کتابخانه rubpy برای ارسال ویدیو
-                        await bot.send_file(chat_id=CHAT_ID, file=trailer_file, caption=caption)
+                        print("📤 ارسال تیزر ویدیویی به کانال...")
+                        await bot.send_file(chat_id=CHAT_ID, file=trailer_file)
+                        
+                        print("📤 ارسال توضیحات و لینک کامل فیلم به کانال...")
+                        await bot.send_message(chat_id=CHAT_ID, text=caption)
+                        
                         os.remove(trailer_file)
                         
-                        print("✅ تیزر فیلم با موفقیت و بدون خطا در کانال منتشر شد.")
+                        print("✅ تیزر فیلم و کپشن کامل با موفقیت و بدون خطا در کانال منتشر شد.")
                         save_to_history(post_url, trailer_url)
                         posted_successfully = True
                         break
                     except Exception as e:
-                        print(f"❌ خطا در ارسال ویدیو به روبیکا: {e}")
+                        print(f"❌ خطا در ارسال به روبیکا: {e}")
                         if trailer_file and os.path.exists(trailer_file):
                             os.remove(trailer_file)
                     
