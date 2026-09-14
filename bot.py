@@ -1,18 +1,22 @@
 import os
 import asyncio
 import re
-import requests
 from bs4 import BeautifulSoup
 
 try:
     import rubpy
+    import curl_cffi
+    import requests
 except ImportError:
-    os.system('pip install rubpy bs4 requests')
+    os.system('pip install rubpy bs4 requests curl_cffi')
     import rubpy
+    from curl_cffi import requests as c_requests
+    import requests
 
+from curl_cffi import requests as c_requests
 from rubpy import BotClient
 
-# لیست سایت‌های فعال و معتبر (حذف موارد نامعتبر)
+# لیست سایت‌های فعال و معتبر
 TARGET_SITES = [
     "https://www.film2movie.asia/",
     "https://www.doostihaa.com/",
@@ -74,11 +78,11 @@ def extract_movie_info(post_soup):
     return imdb_score
 
 async def main():
-    print("🚀 ربات هوشمند با سیستم دور زدن محدودیت دانلود آغاز به کار کرد...")
+    print("🚀 ربات هوشمند با موتور شبیه‌سازی مرورگر (بایپس 503) آغاز به کار کرد...")
     posted_history = get_posted_history()
     
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
     }
 
     async with BotClient(token=RUBIKA_TOKEN) as bot:
@@ -90,7 +94,7 @@ async def main():
                 
             try:
                 print(f"🔍 در حال بررسی سایت: {target_site}")
-                response = requests.get(target_site, headers=headers, timeout=15)
+                response = c_requests.get(target_site, impersonate="chrome", headers=headers, timeout=15)
                 if response.status_code != 200:
                     continue
                     
@@ -120,7 +124,7 @@ async def main():
                         continue
                     
                     print(f"🎯 فیلم جدید پیدا شد: {title}")
-                    post_response = requests.get(post_url, headers=headers, timeout=15)
+                    post_response = c_requests.get(post_url, impersonate="chrome", headers=headers, timeout=15)
                     if post_response.status_code != 200:
                         continue
                         
@@ -131,13 +135,13 @@ async def main():
                         print("⏭️ این فیلم تیزر معتبر نداشت یا تکراری بود.")
                         continue
                     
-                    print(f"📥 در حال دانلود تیزر با مجوز دسترسی (Referer): {trailer_url}")
+                    print(f"📥 در حال دانلود تیزر با عبور از سد امنیتی سرور: {trailer_url}")
                     
-                    # اضافه کردن هدر Referer برای جلوگیری از مسدود شدن دانلود توسط سرور فیلم
                     vid_headers = headers.copy()
                     vid_headers['Referer'] = post_url
                     
-                    vid_res = requests.get(trailer_url, headers=vid_headers, stream=True, timeout=30)
+                    # استفاده از impersonate="chrome" برای جلوگیری از خطای 503 و مسدودسازی
+                    vid_res = c_requests.get(trailer_url, impersonate="chrome", headers=vid_headers, stream=True, timeout=30)
                     if vid_res.status_code != 200:
                         print(f"❌ دانلود تیزر ناموفق بود (کد وضعیت: {vid_res.status_code})")
                         continue
