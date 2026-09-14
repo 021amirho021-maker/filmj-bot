@@ -34,7 +34,6 @@ def save_last_posted_url(url):
 def clean_text(text):
     if not text:
         return ""
-    # پاک کردن کاراکترهای خاصی که ممکن است باعث خطای INVALID_INPUT در روبیکا شوند
     text = re.sub(r'[^\w\s\-\.\,\!\?\(\)\ا-يآأإؤئبپتثجحخدذرزسشصضطظعغفقكگلمنوهيیچپژکگءۀة]', '', text)
     return text.strip()
 
@@ -44,11 +43,14 @@ def send_post_to_rubika(caption):
         "chat_id": CHAT_ID,
         "text": caption
     }
+    
+    print(f"📤 داده‌های ارسالی به روبیکا: {payload}")
+    
     try:
         response = requests.post(url, json=payload, timeout=30)
-        res_json = response.json()
-        print(f"📥 پاسخ سرور روبیکا: {res_json}")
+        print(f"📥 متن خام پاسخ سرور: {response.text}")
         
+        res_json = response.json()
         if res_json.get('status') == 'OK' or 'message_id' in str(res_json):
             print("✅ پست معرفی فیلم با موفقیت در کانال ارسال شد.")
             return True
@@ -84,7 +86,7 @@ def main():
             if not posts:
                 continue
 
-            for p in posts[:5]:
+            for p in posts[:2]: # فعلا روی ۲ مورد تست میکنیم تا لاگ‌ها خلوت‌تر باشند
                 if posted_successfully:
                     break
 
@@ -120,18 +122,12 @@ def main():
                 if not clean_title:
                     clean_title = "فیلم جدید"
                 
-                is_comedy = "کمدی" in title or "طنز" in title
-                genre = "کمدی / طنز" if is_comedy else "سینمایی روز"
-                
                 caption = (
                     f"🎬 {clean_title}\n\n"
-                    f"امتیاز: ویژه | سال: جدید | ژانر: {genre}\n\n"
                     f"معرفی کوتاه:\n"
                     f"{clean_desc}\n\n"
-                    f"لینک دانلود مستقیم و نیم بها:\n"
+                    f"لینک دانلود:\n"
                     f"{post_url}\n\n"
-                    f"ترند این روزها\n"
-                    f"#فیلم #سریال #معرفی_فیلم #تریلر\n\n"
                     f"@moarefi_film_ir"
                 )
                 
