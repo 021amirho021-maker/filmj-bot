@@ -1,7 +1,8 @@
 from datetime import datetime
 import os
-import requests
+import re
 from bs4 import BeautifulSoup
+import requests
 
 TARGET_SITES = [
     "https://www.film2movie.asia/",
@@ -29,6 +30,13 @@ def save_last_posted_url(url):
         os.system('git push')
     except Exception:
         pass
+
+def clean_text(text):
+    if not text:
+        return ""
+    # پاک کردن کاراکترهای خاصی که ممکن است باعث خطای INVALID_INPUT در روبیکا شوند
+    text = re.sub(r'[^\w\s\-\.\,\!\?\(\)\ا-يآأإؤئبپتثجحخدذرزسشصضطظعغفقكگلمنوهيیچپژکگءۀة]', '', text)
+    return text.strip()
 
 def send_post_to_rubika(caption):
     url = f"https://botapi.rubika.ir/v3/{RUBIKA_TOKEN}/sendMessage"
@@ -100,23 +108,27 @@ def main():
                     
                 post_soup = BeautifulSoup(post_response.text, 'html.parser')
                 
-                short_desc = "بدون اسپویل | کیفیت عالی و ترافیک نیم‌بها."
+                short_desc = "بدون اسپویل | کیفیت عالی و ترافیک نیم بها."
                 content_div = post_soup.find('div', class_='content') or post_soup.find('div', class_='post-content')
                 if content_div:
                     paragraph = content_div.find('p')
                     if paragraph and len(paragraph.get_text(strip=True)) > 20:
                         short_desc = paragraph.get_text(strip=True)[:160] + "..."
                 
-                is_comedy = "کمدی" in title or "طنز" in title or "خنده‌دار" in short_desc
+                clean_title = clean_text(title)
+                clean_desc = clean_text(short_desc)
+                if not clean_title:
+                    clean_title = "فیلم جدید"
+                
+                is_comedy = "کمدی" in title or "طنز" in title
                 genre = "کمدی / طنز" if is_comedy else "سینمایی روز"
                 
-                # متن بدون کاراکترهای مارک‌داون (مثل **) تنظیم شد تا روبیکا ارور ندهد
                 caption = (
-                    f"🎬 {title}\n\n"
+                    f"🎬 {clean_title}\n\n"
                     f"امتیاز: ویژه | سال: جدید | ژانر: {genre}\n\n"
                     f"معرفی کوتاه:\n"
-                    f"{short_desc}\n\n"
-                    f"لینک دانلود مستقیم و نیم‌بها:\n"
+                    f"{clean_desc}\n\n"
+                    f"لینک دانلود مستقیم و نیم بها:\n"
                     f"{post_url}\n\n"
                     f"ترند این روزها\n"
                     f"#فیلم #سریال #معرفی_فیلم #تریلر\n\n"
