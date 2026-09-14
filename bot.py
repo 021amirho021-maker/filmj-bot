@@ -47,7 +47,6 @@ def save_to_history(post_url, trailer_url):
         pass
 
 def download_teaser(post_soup):
-    """جستجو و دانلود اختصاصی تیزر ویدیویی (اگر تیزر نباشد، None برمی‌گرداند)"""
     try:
         video_tag = post_soup.find('video')
         trailer_url = None
@@ -102,7 +101,7 @@ async def main():
                 if not posts:
                     continue
 
-                for p in posts[:15]: # بررسی تعداد بیشتر برای پیدا کردن حتمی تیزر
+                for p in posts[:15]:
                     if posted_successfully:
                         break
 
@@ -128,17 +127,14 @@ async def main():
                         
                     post_soup = BeautifulSoup(post_response.text, 'html.parser')
                     
-                    # 1. تلاش برای پیدا کردن و دانلود تیزر (شرط حیاتی برای انتشار)
                     trailer_url, trailer_file = download_teaser(post_soup)
                     
-                    # اگر تیزر نداشت یا تکراری بود، این فیلم رو رد کن و برو سراغ بعدی!
                     if not trailer_url or not trailer_file or trailer_url in posted_history:
                         print("⏭️ این فیلم تیزر ویدیویی نداشت یا تکراری بود، رد شد.")
                         if trailer_file and os.path.exists(trailer_file):
                             os.remove(trailer_file)
                         continue
                     
-                    # 2. استخراج توضیحات همراه با جزئیات و کمی اسپویل جذاب داستان
                     spoiler_desc = "ماجرای این فیلم از جایی شروع می‌شود که کاراکتر اصلی درگیر یک چالش مرگبار و رازآلود شده و در نهایت... (پیشنهاد می‌کنیم حتماً تماشا کنید تا غافلگیر بشید!)"
                     content_div = post_soup.find('div', class_='content') or post_soup.find('div', class_='post-content')
                     if content_div:
@@ -162,11 +158,12 @@ async def main():
                     )
                     
                     try:
-                        print("📤 ارسال تیزر ویدیویی و کپشن اختصاصی به کانال...")
-                        await bot.send_video(chat_id=CHAT_ID, video=trailer_file, caption=caption)
+                        print("📤 ارسال تیزر ویدیویی به همراه کپشن به کانال...")
+                        # استفاده از متد استاندارد send_file در کتابخانه rubpy برای ارسال ویدیو
+                        await bot.send_file(chat_id=CHAT_ID, file=trailer_file, caption=caption)
                         os.remove(trailer_file)
                         
-                        print("✅ تیزر فیلم با موفقیت و کاملاً اصولی در کانال منتشر شد.")
+                        print("✅ تیزر فیلم با موفقیت و بدون خطا در کانال منتشر شد.")
                         save_to_history(post_url, trailer_url)
                         posted_successfully = True
                         break
