@@ -48,20 +48,30 @@ def save_to_history(post_url, trailer_url):
 
 def download_teaser(post_soup, title):
     try:
-        video_tag = post_soup.find('video')
         trailer_url = None
         
-        if video_tag and video_tag.get('src'):
-            trailer_url = video_tag['src']
-        else:
+        # ۱. بررسی تگ استاندارد video و source
+        video_tag = post_soup.find('video')
+        if video_tag:
+            if video_tag.get('src'):
+                trailer_url = video_tag['src']
+            else:
+                source_tag = video_tag.find('source')
+                if source_tag and source_tag.get('src'):
+                    trailer_url = source_tag['src']
+        
+        # ۲. اگر پیدا نشد، جستجوی لینک‌هایی که دقیقاً به فایل ویدیو (.mp4) ختم می‌شوند
+        if not trailer_url:
             for a in post_soup.find_all('a', href=True):
                 href = a['href']
-                if 'trailer' in href.lower() or 'teaser' in href.lower() or (href.endswith('.mp4') and 'dl' in href):
+                # جلوگیری از انتخاب صفحات دسته‌بندی و فقط لینک مستقیم ویدیویی
+                if href.lower().endswith('.mp4') or ('mp4' in href.lower() and 'dl' in href.lower()):
                     trailer_url = href
                     break
         
-        if trailer_url:
-            print(f"📥 تیزر ویدیویی پیدا شد، در حال دانلود از: {trailer_url}")
+        # اطمینان از اینکه لینک حتماً ویدیویی است
+        if trailer_url and ('mp4' in trailer_url.lower() or trailer_url.lower().endswith('.mp4')):
+            print(f"📥 تیزر ویدیویی معتبر پیدا شد، در حال دانلود از: {trailer_url}")
             headers = {'User-Agent': 'Mozilla/5.0'}
             vid_res = requests.get(trailer_url, headers=headers, stream=True, timeout=25)
             if vid_res.status_code == 200:
@@ -130,7 +140,7 @@ async def main():
                     trailer_url, trailer_file = download_teaser(post_soup, title)
                     
                     if not trailer_url or not trailer_file or trailer_url in posted_history:
-                        print("⏭️ این فیلم تیزر ویدیویی نداشت یا تکراری بود، رد شد.")
+                        print("⏭️ این فیلم تیزر ویدیویی معتبر نداشت یا تکراری بود، رد شد.")
                         if trailer_file and os.path.exists(trailer_file):
                             os.remove(trailer_file)
                         continue
