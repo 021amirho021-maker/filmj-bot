@@ -9,7 +9,6 @@ TARGET_SITES = [
 ]
 
 RUBIKA_TOKEN = "CEEDJE0NSCPVLWRZSPQCCGYNLTWTKOKYHYVAIBGSKSVRJGHTXVPXXHXOZQLWXRTT"
-# شناسه تایید شده و واقعی کانال شما:
 CHAT_ID = "c0ECYaE0b68c6a209e2060cceebd2bd9" 
 LAST_URL_FILE = "last_url.txt"
 
@@ -109,18 +108,19 @@ def main():
                         short_desc = paragraph.get_text(strip=True)[:160] + "..."
                 
                 is_comedy = "کمدی" in title or "طنز" in title or "خنده‌دار" in short_desc
-                genre = "کمدی / طنز 😂" if is_comedy else "سینمایی روز 🔥"
+                genre = "کمدی / طنز" if is_comedy else "سینمایی روز"
                 
+                # متن بدون کاراکترهای مارک‌داون (مثل **) تنظیم شد تا روبیکا ارور ندهد
                 caption = (
-                    f"🎬 **{title}**\n\n"
-                    f"⭐ امتیاز: ویژه 📅 سال: جدید 🎭 ژانر: {genre}\n\n"
-                    f"📝 **معرفی کوتاه:**\n"
+                    f"🎬 {title}\n\n"
+                    f"امتیاز: ویژه | سال: جدید | ژانر: {genre}\n\n"
+                    f"معرفی کوتاه:\n"
                     f"{short_desc}\n\n"
-                    f"📥 **لینک دانلود مستقیم و نیم‌بها:**\n"
-                    f"🔗 {post_url}\n\n"
-                    f"🔥 ترند این روزها\n"
+                    f"لینک دانلود مستقیم و نیم‌بها:\n"
+                    f"{post_url}\n\n"
+                    f"ترند این روزها\n"
                     f"#فیلم #سریال #معرفی_فیلم #تریلر\n\n"
-                    f"📌 @moarefi_film_ir"
+                    f"@moarefi_film_ir"
                 )
                 
                 success = send_post_to_rubika(caption)
