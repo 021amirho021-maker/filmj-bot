@@ -16,7 +16,7 @@ except ImportError:
 from curl_cffi import requests as c_requests
 from rubpy import BotClient
 
-# لیست سایت‌های فعال و سازگار
+# لیست سایت‌های منبع
 TARGET_SITES = [
     "https://www.doostihaa.com/",
     "https://salamdl.info/"
@@ -179,9 +179,8 @@ async def main():
                     )
                     
                     try:
-                        print("📤 در حال آپلود و ارسال ویدیو به همراه کپشن در کانال...")
-                        # استفاده از متد استاندارد send_file در روبای برای ارسال ویدیوی پلیردار
-                        await bot.send_file(chat_id=CHAT_ID, file=trailer_file, caption=caption)
+                        print("📤 در حال آپلود و ارسال ویدیو به همراه متن در کانال...")
+                        await bot.send_file(chat_id=CHAT_ID, file=trailer_file, text=caption)
                         
                         if os.path.exists(trailer_file):
                             os.remove(trailer_file)
