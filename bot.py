@@ -18,7 +18,8 @@ TARGET_SITES = [
 ]
 
 RUBIKA_TOKEN = "CEEDJE0NSCPVLWRZSPQCCGYNLTWTKOKYHYVAIBGSKSVRJGHTXVPXXHXOZQLWXRTT"
-CHAT_ID = "c0ECYaE0b68c6a209e2060cceebd2bd9" 
+# استفاده از آیدی کانال برای جلوگیری از خطای INVALID_INPUT
+CHAT_ID = "@moarefi_film_ir" 
 LAST_URL_FILE = "last_url.txt"
 
 def get_last_posted_url():
@@ -39,21 +40,7 @@ def save_last_posted_url(url):
     except Exception:
         pass
 
-async def send_post_to_rubika(caption):
-    try:
-        bot = BotClient(token=RUBIKA_TOKEN)
-        print(f"📤 در حال ارسال پیام به کانال...")
-        await bot.send_message(chat_id=CHAT_ID, text=caption)
-        print("✅ پست معرفی فیلم با موفقیت در کانال ارسال شد.")
-        return True
-    except Exception as e:
-        print(f"❌ خطا در ارسال پیام: {e}")
-        return False
-
-def run_async_send(caption):
-    return asyncio.run(send_post_to_rubika(caption))
-
-def main():
+async def main():
     print("🚀 ربات در حال بررسی سایت‌ها و انتشار پست...")
     
     headers = {
@@ -124,15 +111,22 @@ def main():
                     f"@moarefi_film_ir"
                 )
                 
-                success = run_async_send(caption)
-                if success:
+                try:
+                    print(f"📤 در حال اتصال و ارسال پیام به کانال...")
+                    # استفاده از async with برای مدیریت صحیح نشست و جلوگیری از خطای Event loop
+                    async with BotClient(token=RUBIKA_TOKEN) as bot:
+                        await bot.send_message(chat_id=CHAT_ID, text=caption)
+                    
+                    print("✅ پست معرفی فیلم با موفقیت در کانال ارسال شد.")
                     save_last_posted_url(post_url)
                     posted_successfully = True
                     break
+                except Exception as e:
+                    print(f"❌ خطا در ارسال پیام: {e}")
                 
         except Exception as e:
             print(f"⚠️ خطا: {e}")
             continue
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
