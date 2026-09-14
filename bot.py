@@ -1,7 +1,6 @@
 import os
 import asyncio
 import re
-from bs4نهار import BeautifulSoup
 from bs4 import BeautifulSoup
 
 try:
@@ -17,7 +16,7 @@ except ImportError:
 from curl_cffi import requests as c_requests
 from rubpy import BotClient
 
-# لیست سایت‌های سازگار با سرورهای ابری (حذف سایت‌های مسدودکننده دیتاسنتر)
+# لیست سایت‌های سازگار با سرورهای ابری
 TARGET_SITES = [
     "https://www.doostihaa.com/",
     "https://salamdl.info/"
@@ -54,7 +53,6 @@ def save_to_history(post_url, trailer_url):
 
 def get_teaser_url(post_soup):
     try:
-        # جستجوی تگ video یا source
         video_tag = post_soup.find('video')
         if video_tag:
             if video_tag.get('src'):
@@ -63,13 +61,11 @@ def get_teaser_url(post_soup):
             if source_tag and source_tag.get('src'):
                 return source_tag['src']
         
-        # جستجو در میان تمام لینک‌ها برای پیدا کردن ویدیو یا تریلر
         for a in post_soup.find_all('a', href=True):
             href = a['href']
             lower_href = href.lower()
-            if '.mp4' in lower_href or 'trailer' in lower_href or 'teaser' in lower_href or 'dl' in lower_href:
-                if any(ext in lower_href for ext in ['.mp4', '.mkv', 'trailer', 'teaser']):
-                    return href
+            if any(ext in lower_href for ext in ['.mp4', '.mkv', 'trailer', 'teaser', 'dl']):
+                return href
     except Exception:
         pass
     return None
@@ -81,7 +77,7 @@ def extract_movie_info(post_soup):
     return imdb_score
 
 async def main():
-    print("🚀 ربات هوشمند با موتور جدید استخراج تریلر آغاز به کار کرد...")
+    print("🚀 ربات هوشمند با موفقیت راه‌اندازی شد...")
     posted_history = get_posted_history()
     
     headers = {
@@ -159,7 +155,6 @@ async def main():
                         for chunk in vid_res.iter_content(chunk_size=8192):
                             f.write(chunk)
                     
-                    # استخراج خلاصه داستان
                     summary_text = "روایتی جذاب و تماشایی که شما را تا انتهای داستان مبهوت خود خواهد کرد..."
                     content_div = post_soup.find('div', class_='content') or post_soup.find('div', class_='post-content') or post_soup.find('div', class_='entry-content')
                     if content_div:
@@ -167,7 +162,6 @@ async def main():
                         if paragraphs:
                             summary_text = " ".join(paragraphs[:2])[:400] + "..."
 
-                    # تشخیص ژانر و امتیاز
                     is_comedy = "کمدی" in title or "طنز" in title
                     genre = "#کمدی #طنز" if is_comedy else "#جنایی #اکشن #درام"
                     imdb_score = extract_movie_info(post_soup)
