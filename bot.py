@@ -4,16 +4,14 @@ import random
 import requests
 from bs4 import BeautifulSoup
 
-# لیست سایت‌های منبع
 TARGET_SITES = [
     "https://www.film2movie.asia/",
     "https://www.doostihaa.com/",
     "https://salamcinema.ir/"
 ]
 
-# اطلاعات ربات و کانال شما
 RUBIKA_TOKEN = "CEEDJE0NSCPVLWRZSPQCCGYNLTWTKOKYHYVAIBGSKSVRJGHTXVPXXHXOZQLWXRTT"
-CHANNEL_USERNAME = "@moarefi_film_ir"
+CHANNEL_USERNAME = "@moarefi_film_ir"  # اگر گاید کانال را دارید، اینجا به جای یوزرنیم قرار دهید
 LAST_URL_FILE = "last_url.txt"
 
 def get_last_posted_url():
@@ -41,18 +39,23 @@ def send_video_to_rubika(video_path, caption):
             files = {'video': f}
             data = {'chat_id': CHANNEL_USERNAME, 'caption': caption}
             response = requests.post(url, files=files, data=data, timeout=60)
-            if response.status_code == 200:
+            
+            # چاپ پاسخ دقیق سرور روبیکا برای عیب‌یابی
+            print(f"📥 پاسخ سرور روبیکا: {response.text}")
+            
+            res_json = response.json()
+            if res_json.get('status') == 'OK' or 'message_id' in str(res_json):
                 print("✅ تریلر با موفقیت در کانال ارسال شد.")
                 return True
             else:
-                print(f"❌ خطا در ارسال ویدیو: {response.text}")
+                print(f"❌ سرور روبیکا درخواست را رد کرد: {response.text}")
                 return False
     except Exception as e:
         print(f"❌ خطا در ارسال فایل ویدیو: {e}")
         return False
 
 def main():
-    print("🚀 ربات هوشمند با قالب جدید شروع به کار کرد...")
+    print("🚀 ربات در حال بررسی و ارسال...")
     
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -65,7 +68,6 @@ def main():
         if posted_successfully:
             break
             
-        print(f"🔍 در حال بررسی سایت: {target_site}")
         try:
             response = requests.get(target_site, headers=headers, timeout=15)
             if response.status_code != 200:
@@ -77,7 +79,7 @@ def main():
             if not posts:
                 continue
 
-            for p in posts[:8]:
+            for p in posts[:5]:
                 if posted_successfully:
                     break
 
@@ -92,10 +94,9 @@ def main():
                 post_url = link_tag['href']
                 
                 if post_url == last_url:
-                    print(f"⏳ اثر '{title}' قبلاً منتشر شده، بررسی مورد بعدی...")
                     continue
                 
-                print(f"🎯 بررسی تریلر برای: {title}")
+                print(f"🎯 تست ارسال برای: {title}")
                 post_response = requests.get(post_url, headers=headers, timeout=15)
                 if post_response.status_code != 200:
                     continue
@@ -117,13 +118,11 @@ def main():
                         break
                 
                 if not trailer_url:
-                    print(f"⚠️ تریلری پیدا نشد، رفتن به سراغ فیلم بعدی...")
                     continue
                 
                 is_comedy = "کمدی" in title or "طنز" in title or "خنده‌دار" in short_desc
                 genre = "کمدی / طنز 😂" if is_comedy else "سینمایی روز 🔥"
                 
-                # 💎 قالب جدید، لوکس و تمیز متناسب با درخواست شما
                 caption = (
                     f"🎬 **{title}**\n\n"
                     f"⭐ امتیاز: ویژه 📅 سال: جدید 🎭 ژانر: {genre}\n\n"
@@ -136,7 +135,6 @@ def main():
                     f"📌 {CHANNEL_USERNAME}"
                 )
                 
-                print(f"📥 در حال دانلود تریلر...")
                 trailer_res = requests.get(trailer_url, stream=True, timeout=30)
                 if trailer_res.status_code == 200:
                     video_path = "trailer.mp4"
@@ -145,7 +143,6 @@ def main():
                             if chunk:
                                 f.write(chunk)
                     
-                    print("📤 در حال آپلود ویدیو در کانال...")
                     success = send_video_to_rubika(video_path, caption)
                     
                     if os.path.exists(video_path):
@@ -155,14 +152,10 @@ def main():
                         save_last_posted_url(post_url)
                         posted_successfully = True
                         break
-                else:
-                    print("❌ خطا در دانلود فایل ویدیویی تریلر.")
                 
         except Exception as e:
-            print(f"⚠️ خطا در بررسی منابع: {e}")
+            print(f"⚠️ خطا: {e}")
             continue
-
-    print("🏁 پایان چرخه.")
 
 if __name__ == "__main__":
     main()
