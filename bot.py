@@ -46,7 +46,7 @@ def save_to_history(post_url, trailer_url):
     except Exception:
         pass
 
-def download_teaser(post_soup):
+def download_teaser(post_soup, title):
     try:
         video_tag = post_soup.find('video')
         trailer_url = None
@@ -127,7 +127,7 @@ async def main():
                         
                     post_soup = BeautifulSoup(post_response.text, 'html.parser')
                     
-                    trailer_url, trailer_file = download_teaser(post_soup)
+                    trailer_url, trailer_file = download_teaser(post_soup, title)
                     
                     if not trailer_url or not trailer_file or trailer_url in posted_history:
                         print("⏭️ این فیلم تیزر ویدیویی نداشت یا تکراری بود، رد شد.")
@@ -158,15 +158,12 @@ async def main():
                     )
                     
                     try:
-                        print("📤 ارسال تیزر ویدیویی به کانال...")
-                        await bot.send_file(chat_id=CHAT_ID, file=trailer_file)
-                        
-                        print("📤 ارسال توضیحات و لینک کامل فیلم به کانال...")
-                        await bot.send_message(chat_id=CHAT_ID, text=caption)
+                        print("📤 ارسال ویدیو به همراه کپشن متصل در کانال...")
+                        await bot.send_video(chat_id=CHAT_ID, video=trailer_file, caption=caption)
                         
                         os.remove(trailer_file)
                         
-                        print("✅ تیزر فیلم و کپشن کامل با موفقیت و بدون خطا در کانال منتشر شد.")
+                        print("✅ ویدیو و کپشن یکپارچه با موفقیت در کانال منتشر شد.")
                         save_to_history(post_url, trailer_url)
                         posted_successfully = True
                         break
